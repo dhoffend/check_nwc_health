@@ -50,6 +50,7 @@ sub check {
     $self->{powersupply_subsystem}->check();
   } elsif ($self->implements_mib('CISCO-ENTITY-FRU-CONTROL-MIB')) {
     $self->{fru_subsystem}->check();
+    return;
   } elsif ($self->implements_mib('CISCO-ENTITY-SENSOR-MIB')) {
     $self->{sensor_subsystem}->check();
   }
