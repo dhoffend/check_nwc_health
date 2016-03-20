@@ -1,4 +1,4 @@
-package Server::Windows;
+package Classes::Server::LinuxLocal;
 our @ISA = qw(Classes::Device);
 use strict;
 
@@ -6,39 +6,32 @@ use strict;
 sub init {
   my $self = shift;
   if ($self->mode =~ /device::interfaces/) {
-    $self->analyze_and_check_interface_subsystem('Server::Windows::Component::InterfaceSubsystem');
+    $self->analyze_and_check_interface_subsystem('Classes::Server::LinuxLocal::Component::InterfaceSubsystem');
   }
 }
 
 
-package Server::Windows::Component::InterfaceSubsystem;
+package Classes::Server::LinuxLocal::Component::InterfaceSubsystem;
 our @ISA = qw(Monitoring::GLPlugin::SNMP::Item);
 use strict;
 
 sub init {
   my $self = shift;
   $self->{interfaces} = [];
-# bits per second
   if ($self->mode =~ /device::interfaces::list/) {
-    my $dbh = DBI->connect('dbi:WMI:');
-    my $sth = $dbh->prepare("select * from Win32_PerfRawData_Tcpip_NetworkInterface");
-    $sth->execute();
-    while (my $member_arr = $sth->fetchrow_arrayref()) {
-      my $member = $member_arr->[0];
+    foreach (glob "/sys/class/net/*") {
+      my $name = $_;
+      next if ! -d $name;
+      $name =~ s/.*\///g;
       my $tmpif = {
-        ifDescr => $member->{Name},
+        ifDescr => $name,
       };
       push(@{$self->{interfaces}},
-        Server::Windows::Component::InterfaceSubsystem::Interface->new(%{$tmpif}));
+        Classes::Server::LinuxLocal::Component::InterfaceSubsystem::Interface->new(%{$tmpif}));
     }
   } else {
-    my $dbh = DBI->connect('dbi:WMI:');
-    my $sth = $dbh->prepare("select * from Win32_PerfRawData_Tcpip_NetworkInterface");
-    $sth->execute();
-    while (my $member_arr = $sth->fetchrow_arrayref()) {
-      my $i = 0;
-      my $member = $member_arr->[0];
-      my $name = $member->{Name};
+    foreach (glob "/sys/class/net/*") {
+      my $name = $_;
       $name =~ s/.*\///g;
       if ($self->opts->name) {
         if ($self->opts->regexp) {
@@ -55,13 +48,13 @@ sub init {
       *STDERR = *ERR;
       my $tmpif = {
         ifDescr => $name,
-        ifSpeed => $member->{CurrentBandwidth},
-        ifInOctets => $member->{BytesReceivedPerSec},
-        ifInDiscards => $member->{PacketsReceivedDiscarded},
-        ifInErrors => $member->{PacketsReceivedErrors},
-        ifOutOctets => $member->{BytesSentPerSec},
-        ifOutDiscards => $member->{PacketsOutboundDiscarded},
-        ifOutErrors => $member->{PacketsOutboundErrors},
+        ifSpeed => (-f "/sys/class/net/$name/speed" ? do { local (@ARGV, $/) = "/sys/class/net/$name/speed"; my $x = <>; close ARGV; $x} * 1024*1024 : undef),
+        ifInOctets => do { local (@ARGV, $/) = "/sys/class/net/$name/statistics/rx_bytes"; my $x = <>; close ARGV; $x},
+        ifInDiscards => do { local (@ARGV, $/) = "/sys/class/net/$name/statistics/rx_dropped"; my $x = <>; close ARGV; $x},
+        ifInErrors => do { local (@ARGV, $/) = "/sys/class/net/$name/statistics/rx_errors"; my $x = <>; close ARGV; $x},
+        ifOutOctets => do { local (@ARGV, $/) = "/sys/class/net/$name/statistics/tx_bytes"; my $x = <>; close ARGV; $x},
+        ifOutDiscards => do { local (@ARGV, $/) = "/sys/class/net/$name/statistics/tx_dropped"; my $x = <>; close ARGV; $x},
+        ifOutErrors => do { local (@ARGV, $/) = "/sys/class/net/$name/statistics/tx_errors"; my $x = <>; close ARGV; $x},
       };
       *STDERR = *SAVEERR;
       foreach (keys %{$tmpif}) {
@@ -74,7 +67,7 @@ sub init {
         $self->add_unknown(sprintf "There is no /sys/class/net/%s/speed. Use --ifspeed", $name);
       } else {
         push(@{$self->{interfaces}},
-          Server::Windows::Component::InterfaceSubsystem::Interface->new(%{$tmpif}));
+          Classes::Server::LinuxLocal::Component::InterfaceSubsystem::Interface->new(%{$tmpif}));
       }
     }
   }
@@ -99,10 +92,9 @@ sub check {
 }
 
 
-package Server::Windows::Component::InterfaceSubsystem::Interface;
+package Classes::Server::LinuxLocal::Component::InterfaceSubsystem::Interface;
 our @ISA = qw(Monitoring::GLPlugin::SNMP::TableItem);
 use strict;
-
 
 sub finish {
   my $self = shift;
@@ -170,21 +162,20 @@ sub finish {
     }
   } elsif ($self->mode =~ /device::interfaces::errors/) {
     $self->valdiff({name => $self->{ifDescr}}, qw(ifInErrors ifOutErrors));
-    $self->{inputErrorRate} = $self->{delta_ifInErrors} 
+    $self->{inputErrorRate} = $self->{delta_ifInErrors}
         / $self->{delta_timestamp};
-    $self->{outputErrorRate} = $self->{delta_ifOutErrors} 
+    $self->{outputErrorRate} = $self->{delta_ifOutErrors}
         / $self->{delta_timestamp};
   } elsif ($self->mode =~ /device::interfaces::discards/) {
     $self->valdiff({name => $self->{ifDescr}}, qw(ifInDiscards ifOutDiscards));
-    $self->{inputDiscardRate} = $self->{delta_ifInDiscards} 
+    $self->{inputDiscardRate} = $self->{delta_ifInDiscards}
         / $self->{delta_timestamp};
-    $self->{outputDiscardRate} = $self->{delta_ifOutDiscards} 
+    $self->{outputDiscardRate} = $self->{delta_ifOutDiscards}
         / $self->{delta_timestamp};
   } elsif ($self->mode =~ /device::interfaces::operstatus/) {
   }
   return $self;
 }
-
 
 sub check {
   my $self = shift;
@@ -202,8 +193,8 @@ sub check {
     $Monitoring::GLPlugin::mode = "device::interfaces::complete";
   } elsif ($self->mode =~ /device::interfaces::usage/) {
     $self->add_info(sprintf 'interface %s usage is in:%.2f%% (%s) out:%.2f%% (%s)',
-        $self->{ifDescr}, 
-        $self->{inputUtilization}, 
+        $self->{ifDescr},
+        $self->{inputUtilization},
         sprintf("%.2f%s/s", $self->{inputRate}, $self->opts->units),
         $self->{outputUtilization},
         sprintf("%.2f%s/s", $self->{outputRate}, $self->opts->units));

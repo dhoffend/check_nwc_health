@@ -1,4 +1,4 @@
-package Server::Solaris;
+package Classes::Server::WindowsLocal;
 our @ISA = qw(Classes::Device);
 use strict;
 
@@ -6,97 +6,67 @@ use strict;
 sub init {
   my $self = shift;
   if ($self->mode =~ /device::interfaces/) {
-    $self->analyze_and_check_interface_subsystem('Server::Solaris::Component::InterfaceSubsystem');
+    $self->analyze_and_check_interface_subsystem('Classes::Server::WindowsLocal::Component::InterfaceSubsystem');
   }
 }
 
 
-package Server::Solaris::Component::InterfaceSubsystem;
+package Classes::Server::WindowsLocal::Component::InterfaceSubsystem;
 our @ISA = qw(Monitoring::GLPlugin::SNMP::Item);
 use strict;
 
-sub packet_size {
-  my $stats = shift;
-  if (defined $stats->{opackets64} && $stats->{opackets64} != 0 && defined $stats->{obytes64}) {
-    return int($stats->{obytes64} / $stats->{opackets64});
-  } elsif (defined $stats->{ipackets64} && $stats->{ipackets64} != 0 && defined $stats->{rbytes64}) {
-    return int($stats->{rbytes64} / $stats->{ipackets64});
-  } elsif (defined $stats->{opackets} && $stats->{opackets} != 0 && defined $stats->{obytes}) {
-    return int($stats->{obytes} / $stats->{opackets});
-  } elsif (defined $stats->{ipackets} && $stats->{ipackets} != 0 && defined $stats->{rbytes}) {
-    return int($stats->{rbytes} / $stats->{ipackets});
-  } else {
-    return 0;
-  }
-}
-
 sub init {
   my $self = shift;
-  $self->{kstat} = Sun::Solaris::Kstat->new();
   $self->{interfaces} = [];
-  $self->{kstat_interfaces} = {};
-  foreach my $module (keys %{$self->{kstat}}) {
-    foreach my $instance (keys %{$self->{kstat}->{$module}}) {
-      foreach my $name (keys %{$self->{kstat}->{$module}->{$instance}}) {
-        next if $name !~ /^$module/;
-        if (defined $self->{kstat}->{$module}->{$instance}->{$name}->{ifspeed} ||
-            $module eq "lo") {
-          if (! defined $self->{packet_size}) {
-            my $packet_size = packet_size($self->{kstat}->{$module}->{$instance}->{$name});
-            $self->{packet_size} = $packet_size if $packet_size;
-          }
-          if ($self->filter_name($name)) {
-            $self->{kstat_interfaces}->{$name} =
-                exists $self->{kstat}->{$module}->{$instance}->{mac} ?
-                $self->{kstat}->{$module}->{$instance}->{mac} :
-                $self->{kstat}->{$module}->{$instance}->{$name};
-          }
-        }
-      }
-    }
-  }
+# bits per second
   if ($self->mode =~ /device::interfaces::list/) {
-    foreach my $name (keys %{$self->{kstat_interfaces}}) {
+    my $dbh = DBI->connect('dbi:WMI:');
+    my $sth = $dbh->prepare("select * from Win32_PerfRawData_Tcpip_NetworkInterface");
+    $sth->execute();
+    while (my $member_arr = $sth->fetchrow_arrayref()) {
+      my $member = $member_arr->[0];
       my $tmpif = {
-        ifDescr => $name,
+        ifDescr => $member->{Name},
       };
       push(@{$self->{interfaces}},
-        Server::Solaris::Component::InterfaceSubsystem::Interface->new(%{$tmpif}));
+        Classes::Server::WindowsLocal::Component::InterfaceSubsystem::Interface->new(%{$tmpif}));
     }
   } else {
-    foreach my $name (keys %{$self->{kstat_interfaces}}) {
-      my $tmpif = {};
-      my $stats = $self->{kstat_interfaces}->{$name};
-      $tmpif->{ifDescr} = $name;
-      $tmpif->{ifSnapTime} = $stats->{snaptime};
-      $tmpif->{ifSnapTime} =~ s/\..*//g;
-      if (defined $stats->{ifspeed}) {
-        $tmpif->{ifSpeed} = $stats->{ifspeed};
-      } elsif ($name =~ /^lo/) {
-        $tmpif->{ifSpeed} = 10000000000; # assume 10GBit backplane
+    my $dbh = DBI->connect('dbi:WMI:');
+    my $sth = $dbh->prepare("select * from Win32_PerfRawData_Tcpip_NetworkInterface");
+    $sth->execute();
+    while (my $member_arr = $sth->fetchrow_arrayref()) {
+      my $i = 0;
+      my $member = $member_arr->[0];
+      my $name = $member->{Name};
+      $name =~ s/.*\///g;
+      if ($self->opts->name) {
+        if ($self->opts->regexp) {
+          my $pattern = $self->opts->name;
+          if ($name !~ /$pattern/i) {
+            next;
+          }
+        } elsif (lc $name ne lc $self->opts->name) {
+          next;
+        }
       }
-      if (defined $stats->{rbytes64}) {
-        $tmpif->{ifInOctets} = $stats->{rbytes64};
-      } elsif (defined $stats->{rbytes}) {
-        $tmpif->{ifInOctets} = $stats->{rbytes};
-      } elsif (defined $stats->{ipackets} && $self->{packet_size}) {
-        $tmpif->{ifInOctets} = $stats->{ipackets} * $self->{packet_size};
-      } else {
-        $tmpif->{ifInOctets} = 0;
+      *SAVEERR = *STDERR;
+      open ERR ,'>/dev/null';
+      *STDERR = *ERR;
+      my $tmpif = {
+        ifDescr => $name,
+        ifSpeed => $member->{CurrentBandwidth},
+        ifInOctets => $member->{BytesReceivedPerSec},
+        ifInDiscards => $member->{PacketsReceivedDiscarded},
+        ifInErrors => $member->{PacketsReceivedErrors},
+        ifOutOctets => $member->{BytesSentPerSec},
+        ifOutDiscards => $member->{PacketsOutboundDiscarded},
+        ifOutErrors => $member->{PacketsOutboundErrors},
+      };
+      *STDERR = *SAVEERR;
+      foreach (keys %{$tmpif}) {
+        chomp($tmpif->{$_}) if defined $tmpif->{$_};
       }
-      if (defined $stats->{obytes64}) {
-        $tmpif->{ifOutOctets} = $stats->{obytes64};
-      } elsif (defined $stats->{obytes}) {
-        $tmpif->{ifOutOctets} = $stats->{obytes};
-      } elsif (defined $stats->{opackets} && $self->{packet_size}) {
-        $tmpif->{ifOutOctets} = $stats->{opackets} * $self->{packet_size};
-      } else {
-        $tmpif->{ifOutOctets} = 0;
-      }
-      $tmpif->{ifInErrors} = defined $stats->{ierrors} ? $stats->{ierrors} : 0;
-      $tmpif->{ifOutErrors} = defined $stats->{oerrors} ? $stats->{oerrors} : 0;
-      $tmpif->{ifInDiscards} = 0;
-      $tmpif->{ifOutDiscards} = 0;
       if (defined $self->opts->ifspeed) {
         $tmpif->{ifSpeed} = $self->opts->ifspeed * 1024*1024;
       }
@@ -104,7 +74,7 @@ sub init {
         $self->add_unknown(sprintf "There is no /sys/class/net/%s/speed. Use --ifspeed", $name);
       } else {
         push(@{$self->{interfaces}},
-          Server::Solaris::Component::InterfaceSubsystem::Interface->new(%{$tmpif}));
+          Classes::Server::WindowsLocal::Component::InterfaceSubsystem::Interface->new(%{$tmpif}));
       }
     }
   }
@@ -128,13 +98,15 @@ sub check {
   }
 }
 
-package Server::Solaris::Component::InterfaceSubsystem::Interface;
+
+package Classes::Server::WindowsLocal::Component::InterfaceSubsystem::Interface;
 our @ISA = qw(Monitoring::GLPlugin::SNMP::TableItem);
 use strict;
 
+
 sub finish {
   my $self = shift;
-  foreach (qw(ifSpeed ifInOctets ifInDiscards ifInErrors ifOutOctets ifOutDiscards ifOutErrors ifSnapTime)) {
+  foreach (qw(ifSpeed ifInOctets ifInDiscards ifInErrors ifOutOctets ifOutDiscards ifOutErrors)) {
     $self->{$_} = 0 if ! defined $self->{$_};
   }
   if ($self->mode =~ /device::interfaces::complete/) {
@@ -143,15 +115,14 @@ sub finish {
     $self->init();
     #if ($self->{ifOperStatus} eq "up") {
       foreach my $mode (qw(device::interfaces::usage
-          device::interfaces::errors)) {
+          device::interfaces::errors device::interfaces::discards)) {
         $Monitoring::GLPlugin::mode = $mode;
         $self->init();
       }
     #}
     $Monitoring::GLPlugin::mode = "device::interfaces::complete";
   } elsif ($self->mode =~ /device::interfaces::usage/) {
-    $self->valdiff({name => $self->{ifDescr}}, qw(ifInOctets ifOutOctets ifSnapTime));
-    $self->{delta_timestamp} = $self->{delta_ifSnapTime};
+    $self->valdiff({name => $self->{ifDescr}}, qw(ifInOctets ifOutOctets));
     $self->{delta_ifInBits} = $self->{delta_ifInOctets} * 8;
     $self->{delta_ifOutBits} = $self->{delta_ifOutOctets} * 8;
     if ($self->{ifSpeed} == 0) {
@@ -198,22 +169,22 @@ sub finish {
       $self->{maxOutputRate} = 0;
     }
   } elsif ($self->mode =~ /device::interfaces::errors/) {
-    $self->valdiff({name => $self->{ifDescr}}, qw(ifInErrors ifOutErrors ifSnapTime));
-    $self->{delta_timestamp} = $self->{delta_ifSnapTime};
-    $self->{inputErrorRate} = $self->{delta_ifInErrors}
+    $self->valdiff({name => $self->{ifDescr}}, qw(ifInErrors ifOutErrors));
+    $self->{inputErrorRate} = $self->{delta_ifInErrors} 
         / $self->{delta_timestamp};
-    $self->{outputErrorRate} = $self->{delta_ifOutErrors}
+    $self->{outputErrorRate} = $self->{delta_ifOutErrors} 
         / $self->{delta_timestamp};
-  } elsif ($self->mode =~ /FORCENOTIMPLEMENTEDERROR::device::interfaces::discards/) {
+  } elsif ($self->mode =~ /device::interfaces::discards/) {
     $self->valdiff({name => $self->{ifDescr}}, qw(ifInDiscards ifOutDiscards));
-    $self->{inputDiscardRate} = $self->{delta_ifInDiscards}
+    $self->{inputDiscardRate} = $self->{delta_ifInDiscards} 
         / $self->{delta_timestamp};
-    $self->{outputDiscardRate} = $self->{delta_ifOutDiscards}
+    $self->{outputDiscardRate} = $self->{delta_ifOutDiscards} 
         / $self->{delta_timestamp};
   } elsif ($self->mode =~ /device::interfaces::operstatus/) {
   }
   return $self;
 }
+
 
 sub check {
   my $self = shift;
@@ -223,7 +194,7 @@ sub check {
     $self->check();
     #if ($self->{ifOperStatus} eq "up") {
       foreach my $mode (qw(device::interfaces::usage
-          device::interfaces::errors)) {
+          device::interfaces::errors device::interfaces::discards)) {
         $Monitoring::GLPlugin::mode = $mode;
         $self->check();
       }
@@ -231,8 +202,8 @@ sub check {
     $Monitoring::GLPlugin::mode = "device::interfaces::complete";
   } elsif ($self->mode =~ /device::interfaces::usage/) {
     $self->add_info(sprintf 'interface %s usage is in:%.2f%% (%s) out:%.2f%% (%s)',
-        $self->{ifDescr},
-        $self->{inputUtilization},
+        $self->{ifDescr}, 
+        $self->{inputUtilization}, 
         sprintf("%.2f%s/s", $self->{inputRate}, $self->opts->units),
         $self->{outputUtilization},
         sprintf("%.2f%s/s", $self->{outputRate}, $self->opts->units));

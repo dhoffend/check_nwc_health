@@ -51,15 +51,15 @@ sub classify {
       } elsif ($self->{productname} =~ /FRITZ/i) {
         bless $self, 'Classes::UPNP::AVM';
         $self->debug('using Classes::UPNP::AVM');
-      } elsif ($self->{productname} =~ /linuxlocal/i) {
-        bless $self, 'Server::Linux';
-        $self->debug('using Server::Linux');
-      } elsif ($self->{productname} =~ /windowslocal/i) {
-        bless $self, 'Server::Windows';
-        $self->debug('using Server::Windows');
-      } elsif ($self->{productname} =~ /solarislocal/i) {
-        bless $self, 'Server::Solaris';
-        $self->debug('using Server::Solaris');
+      } elsif ($self->{productname} eq 'linuxlocal') {
+        bless $self, 'Classes::Server::LinuxLocal';
+        $self->debug('using Classes::Server::LinuxLocal');
+      } elsif ($self->{productname} eq 'windowslocal') {
+        bless $self, 'Classes::Server::WindowsLocal';
+        $self->debug('using Classes::Server::WindowsLocal');
+      } elsif ($self->{productname} eq 'solarislocal') {
+        bless $self, 'Classes::Server::SolarisLocal';
+        $self->debug('using Classes::Server::SolarisLocal');
       } elsif ($self->{productname} =~ /Cisco/i) {
         bless $self, 'Classes::Cisco';
         $self->debug('using Classes::Cisco');
