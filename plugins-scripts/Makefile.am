@@ -99,6 +99,9 @@ EXTRA_MODULES=\
   Classes/UPNP/AVM/FritzBox7390.pm \
   Classes/UPNP/AVM.pm \
   Classes/UPNP.pm \
+  Classes/Server/Linux.pm \
+  Classes/Server/Linux/Component/CpuSubsystem.pm \
+  Classes/Server/Linux/Component/EnvironmentalSubsystem.pm \
   Classes/Server/LinuxLocal.pm \
   Classes/Server/WindowsLocal.pm \
   Classes/Server/SolarisLocal.pm \
