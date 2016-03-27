@@ -5,8 +5,8 @@ use strict;
 sub init {
   my $self = shift;
   $self->get_snmp_objects('UCD-SNMP-MIB', (qw(
-      memTotalSwap memAvailSwap memTotalReal memAvailReal
-      memBuffer memCached)));
+      memTotalSwap memAvailSwap memTotalReal memAvailReal memBuffer memCached
+      memMinimumSwap memSwapError memSwapErrorMsg)));
 
   # basically buffered memory can always be freed up (filesystem cache)
   # https://kc.mcafee.com/corporate/index?page=content&id=KB73175
@@ -45,14 +45,19 @@ sub check {
   if (defined $self->{'swap_usage'}) {
     $self->add_info(sprintf 'swap usage is %.2f%%',
         $self->{swap_usage});
-    $self->set_thresholds(warning => 10,
-        critical => 50);
+    $self->set_thresholds(
+      warning => int(100 - ($self->{memMinimumSwap} * 100 / $self->{memTotalSwap})),
+      critical => int(100 - ($self->{memMinimumSwap} * 100 / $self->{memTotalSwap}))
+    );
     $self->add_message($self->check_thresholds($self->{swap_usage}));
     $self->add_perfdata(
         label => 'swap_usage',
         value => $self->{swap_usage},
         uom => '%',
     );
+  }
+  if ($self->{'memSwapError'}) {
+    $self->add_critical('SwapError: ' . $self->{'memSwapErrorMsg'});
   }
 }
 
