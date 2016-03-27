@@ -69,10 +69,20 @@ use strict;
 sub check {
   my $self = shift;
   my $errorfound = 0;
-  $self->add_info(sprintf '%s is %.2f', lc $self->{laNames}, $self->{laLoadFloat});
-  $self->set_thresholds(warning => $self->{laConfig},
-      critical => $self->{laConfig});
-  $self->add_message($self->check_thresholds($self->{laLoadFloat}));
+  $self->set_thresholds(
+      warning => $self->{laConfig},
+      critical => $self->{laConfig}
+  );
+  $self->add_info(
+      sprintf '%s is %.2f%s',
+      lc $self->{laNames}, $self->{laLoadFloat},
+      $self->{'laErrorFlag'} ? sprintf ' (%s)', $self->{'laErrMessage'} : ''
+  );
+  if ($self->{'laErrorFlag'}) {
+    $self->add_message(Monitoring::GLPlugin::CRITICAL);
+  } else {
+    $self->add_message($self->check_thresholds($self->{laLoadFloat}));
+  }
   $self->add_perfdata(
       label => lc $self->{laNames},
       value => $self->{laLoadFloat},
