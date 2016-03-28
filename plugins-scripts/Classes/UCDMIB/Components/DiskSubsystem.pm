@@ -7,7 +7,20 @@ sub init {
   $self->get_snmp_tables('UCD-SNMP-MIB', [
       ['disks', 'dskTable', 'Classes::UCDMIB::Component::DiskSubsystem::Disk',
           sub {
-            return shift->{dskDevice} !~ /^(sysfs|proc|udev|devpts|rpc_pipefs|nfsd)$/;
+            my $self = shift;
+            # limit disk checks to specific disks. could be improvied by
+            # checking the path first and then request the table by indizes
+            if ($self->opts->name) {
+              if ($self->opts->regexp) {
+                my $pattern = $self->opts->name;
+                return $self->{dskPath} =~ /$pattern/i;
+              } else {
+                return grep { $_ eq $self->{dskPath} }
+                    split ',', $self->opts->name;
+              }
+            } else {
+              return $self->{dskDevice} !~ /^(sysfs|proc|udev|devpts|rpc_pipefs|nfsd)$/;
+            }
           }
       ],
   ]);
