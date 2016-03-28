@@ -5,7 +5,24 @@ use strict;
 sub init {
   my $self = shift;
   $self->get_snmp_tables('UCD-SNMP-MIB', [
-      ['processes', 'prTable', 'Classes::UCDMIB::Component::ProcessSubsystem::Process']
+      ['processes', 'prTable', 'Classes::UCDMIB::Component::ProcessSubsystem::Process',
+        sub {
+          my $self = shift;
+          # limit process checks to specific names. could be improvied by
+          # checking the names first and then request the table by indizes
+          if ($self->opts->name) {
+            if ($self->opts->regexp) {
+              my $pattern = $self->opts->name;
+              return $self->{prNames} =~ /$pattern/i;
+            } else {
+              return grep { $_ eq $self->{prNames} }
+                  split ',', $self->opts->name;
+            }
+          } else {
+            return 1;
+          }
+        }
+      ]
   ]);
 }
 
