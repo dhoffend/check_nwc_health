@@ -47,12 +47,14 @@ sub check {
   $self->add_info(sprintf '%s: %d%s',
       $self->{prNames},
       $self->{prCount},
-      $self->{prErrorFlag} ? sprintf ' (%s)', $self->{prErrMessage} : '');
+      $self->{prErrorFlag} eq 'error'
+          ? sprintf ' (%s)', $self->{prErrMessage}
+          : '');
   my $threshold = sprintf '%u:%s',
       !$self->{prMin} && !$self->{prMax} ? 1 : $self->{prMin},
       $self->{prMax} && $self->{prMax} >= $self->{prMin} ? $self->{prMax} : '';
   $self->set_thresholds( warning => $threshold, critical => $threshold);
-  if ($self->{prErrorFlag}) {
+  if ($self->{prErrorFlag} eq 'error') {
     $self->add_message(Monitoring::GLPlugin::CRITICAL);
   } else {
     $self->add_message($self->check_thresholds($self->{prCount}));

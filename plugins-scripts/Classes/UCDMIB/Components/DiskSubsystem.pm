@@ -65,9 +65,11 @@ sub check {
   $self->add_info(sprintf 'disk %s has %.2f%% free space left%s',
       $self->{dskPath},
       $free,
-      $self->{dskErrorFlag} ? sprintf ' (%s)', $self->{dskErrorMsg} : '');
+      $self->{dskErrorFlag} eq 'error'
+          ? sprintf ' (%s)', $self->{dskErrorMsg}
+          : '');
   # set error level if needed
-  if ($self->{dskErrorFlag}) {
+  if ($self->{dskErrorFlag} eq 'error') {
     $self->add_message(Monitoring::GLPlugin::CRITICAL);
   } else {
     $self->add_message($self->check_thresholds(

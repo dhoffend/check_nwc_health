@@ -42,9 +42,11 @@ sub check {
   $self->add_info(
       sprintf '%s is %.2f%s',
       lc $self->{laNames}, $self->{laLoad},
-      $self->{'laErrorFlag'} ? sprintf ' (%s)', $self->{'laErrMessage'} : ''
+      $self->{'laErrorFlag'} eq 'error'
+          ? sprintf ' (%s)', $self->{'laErrMessage'}
+          : ''
   );
-  if ($self->{'laErrorFlag'}) {
+  if ($self->{'laErrorFlag'} eq 'error') {
     $self->add_message(Monitoring::GLPlugin::CRITICAL);
   } else {
     $self->add_message($self->check_thresholds($self->{laLoad}));

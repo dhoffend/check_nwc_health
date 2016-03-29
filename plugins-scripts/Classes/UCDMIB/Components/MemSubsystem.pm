@@ -56,7 +56,7 @@ sub check {
         uom => '%',
     );
   }
-  if ($self->{'memSwapError'}) {
+  if ($self->{'memSwapError'} eq 'error') {
     $self->add_critical('SwapError: ' . $self->{'memSwapErrorMsg'});
   }
 }
