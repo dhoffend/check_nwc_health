@@ -238,6 +238,7 @@ EXTRA_MODULES=\
   Classes/UCDMIB/Components/CpuSubsystem.pm \
   Classes/UCDMIB/Components/DiskSubsystem.pm \
   Classes/UCDMIB/Components/ProcessSubsystem.pm \
+  Classes/UCDMIB/Components/LoadSubsystem.pm \
   Classes/UCDMIB.pm \
   Classes/F5/F5BIGIP/Component/LTM.pm \
   Classes/F5/F5BIGIP/Component/DiskSubsystem.pm \

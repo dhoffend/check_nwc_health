@@ -14,19 +14,20 @@ sub init {
   my $self = shift;
   $self->{cpu_subsystem} =
       Classes::UCDMIB::Component::CpuSubsystem->new();
-  $self->{cpu_subsystem}->unix_init();
+  $self->{load_subsystem} =
+      Classes::UCDMIB::Component::LoadSubsystem->new();
 }
 
 sub check {
   my $self = shift;
   $self->{cpu_subsystem}->check();
-  $self->{cpu_subsystem}->unix_check();
+  $self->{load_subsystem}->check();
 }
 
 sub dump {
   my $self = shift;
   $self->{cpu_subsystem}->dump();
-  $self->{cpu_subsystem}->unix_dump();
+  $self->{load_subsystem}->dump();
 }
 
 
