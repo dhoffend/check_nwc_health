@@ -65,6 +65,7 @@ sub unix_dump {
 package Classes::UCDMIB::Component::CpuSubsystem::Load;
 our @ISA = qw(Monitoring::GLPlugin::SNMP::TableItem);
 use strict;
+use Data::Dumper;
 
 sub check {
   my $self = shift;
@@ -75,17 +76,17 @@ sub check {
   );
   $self->add_info(
       sprintf '%s is %.2f%s',
-      lc $self->{laNames}, $self->{laLoadFloat},
+      lc $self->{laNames}, $self->{laLoad},
       $self->{'laErrorFlag'} ? sprintf ' (%s)', $self->{'laErrMessage'} : ''
   );
   if ($self->{'laErrorFlag'}) {
     $self->add_message(Monitoring::GLPlugin::CRITICAL);
   } else {
-    $self->add_message($self->check_thresholds($self->{laLoadFloat}));
+    $self->add_message($self->check_thresholds($self->{laLoad}));
   }
   $self->add_perfdata(
       label => lc $self->{laNames},
-      value => $self->{laLoadFloat},
+      value => $self->{laLoad},
   );
 }
 
