@@ -13,13 +13,14 @@ sub init {
             if ($self->opts->name) {
               if ($self->opts->regexp) {
                 my $pattern = $self->opts->name;
-                return $self->{dskPath} =~ /$pattern/i;
+                return $self->{dskTotal} && $self->{dskPath} =~ /$pattern/i;
               } else {
-                return grep { $_ eq $self->{dskPath} }
+                return $self->{dskTotal} && grep { $_ eq $self->{dskPath} }
                     split ',', $self->opts->name;
               }
             } else {
-              return $self->{dskDevice} !~ /^(sysfs|proc|udev|devpts|rpc_pipefs|nfsd)$/;
+              return $self->{dskTotal} &&
+                  $self->{dskDevice} !~ /^(sysfs|proc|udev|devpts|rpc_pipefs|nfsd)$/;
             }
           }
       ],
