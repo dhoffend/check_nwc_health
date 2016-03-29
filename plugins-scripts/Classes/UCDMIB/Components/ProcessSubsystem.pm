@@ -26,6 +26,18 @@ sub init {
   ]);
 }
 
+sub check {
+  my $self = shift;
+  $self->add_info('checking processes');
+  if (scalar(@{$self->{processes}}) == 0) {
+    $self->add_unknown('no processes');
+    return;
+  }
+  foreach (@{$self->{processes}}) {
+    $_->check();
+  }
+}
+
 package Classes::UCDMIB::Component::ProcessSubsystem::Process;
 our @ISA = qw(Monitoring::GLPlugin::SNMP::TableItem);
 use strict;
