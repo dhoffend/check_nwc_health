@@ -27,6 +27,18 @@ sub init {
   ]);
 }
 
+sub check {
+  my $self = shift;
+  $self->add_info('checking disks');
+  if (scalar(@{$self->{disks}}) == 0) {
+    $self->add_unknown('no disks');
+    return;
+  }
+  foreach (@{$self->{disks}}) {
+    $_->check();
+  }
+}
+
 package Classes::UCDMIB::Component::DiskSubsystem::Disk;
 our @ISA = qw(Monitoring::GLPlugin::SNMP::TableItem);
 use strict;
