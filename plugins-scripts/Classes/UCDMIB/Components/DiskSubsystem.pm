@@ -20,7 +20,7 @@ sub init {
               }
             } else {
               return $self->{dskTotal} &&
-                  $self->{dskDevice} !~ /^(sysfs|proc|udev|devpts|rpc_pipefs|nfsd)$/;
+                  $self->{dskDevice} !~ /^(sysfs|proc|udev|devpts|rpc_pipefs|nfsd|devfs)$/;
             }
           }
       ],
@@ -49,8 +49,8 @@ sub check {
   my $free = 100 * $self->{dskAvail} / $self->{dskTotal};
   $free = 100 - $self->{dskPercent} if $self->{dskTotal} >= 2147483647;
   # define + set threshold
-  my $warn = 10;
-  my $crit = 5;
+  my $warn = ':10';
+  my $crit = ':5';
   if ($self->{dskMinPercent} >= 0) {
     $warn = $self->{dskMinPercent}.':';
     $crit = $warn;
