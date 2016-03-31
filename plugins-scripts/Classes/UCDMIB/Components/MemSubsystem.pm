@@ -30,9 +30,13 @@ sub check {
   if (defined $self->{mem_usage}) {
     $self->add_info(sprintf 'memory usage is %.2f%%',
         $self->{mem_usage});
-    $self->set_thresholds(warning => 80,
+    $self->set_thresholds(
+        metric => 'memory_usage',
+        warning => 80,
         critical => 90);
-    $self->add_message($self->check_thresholds($self->{mem_usage}));
+    $self->add_message($self->check_thresholds(
+        metric => 'memory_usage',
+        value => $self->{mem_usage}));
     $self->add_perfdata(
         label => 'memory_usage',
         value => $self->{mem_usage},
@@ -46,10 +50,13 @@ sub check {
     $self->add_info(sprintf 'swap usage is %.2f%%',
         $self->{swap_usage});
     $self->set_thresholds(
+      metric => 'swap_usage',
       warning => int(100 - ($self->{memMinimumSwap} * 100 / $self->{memTotalSwap})),
       critical => int(100 - ($self->{memMinimumSwap} * 100 / $self->{memTotalSwap}))
     );
-    $self->add_message($self->check_thresholds($self->{swap_usage}));
+    $self->add_message($self->check_thresholds(
+        metric => 'swap_usage',
+        value => $self->{swap_usage}));
     $self->add_perfdata(
         label => 'swap_usage',
         value => $self->{swap_usage},

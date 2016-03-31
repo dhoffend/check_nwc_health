@@ -28,8 +28,13 @@ sub check {
   my $self = shift;
   $self->add_info('checking cpus');
   $self->add_info(sprintf 'cpu usage is %.2f%%', $self->{cpu_usage});
-  $self->set_thresholds(warning => 50, critical => 90);
-  $self->add_message($self->check_thresholds($self->{cpu_usage}));
+  $self->set_thresholds(
+      metric => 'cpu_usage',
+      warning => 50,
+      critical => 90);
+  $self->add_message($self->check_thresholds(
+      metric => 'cpu_usage',
+      value => $self->{cpu_usage}));
   $self->add_perfdata(
       label => 'cpu_usage',
       value => $self->{cpu_usage},

@@ -36,6 +36,7 @@ sub check {
   my $self = shift;
   my $errorfound = 0;
   $self->set_thresholds(
+      metric => lc $self->{laNames},
       warning => $self->{laConfig},
       critical => $self->{laConfig}
   );
@@ -49,7 +50,9 @@ sub check {
   if ($self->{'laErrorFlag'} eq 'error') {
     $self->add_message(Monitoring::GLPlugin::CRITICAL);
   } else {
-    $self->add_message($self->check_thresholds($self->{laLoad}));
+    $self->add_message($self->check_thresholds(
+        metric => lc $self->{laNames},
+        value => $self->{laLoad}));
   }
   $self->add_perfdata(
       label => lc $self->{laNames},

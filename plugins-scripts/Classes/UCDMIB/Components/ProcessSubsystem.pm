@@ -53,11 +53,16 @@ sub check {
   my $threshold = sprintf '%u:%s',
       !$self->{prMin} && !$self->{prMax} ? 1 : $self->{prMin},
       $self->{prMax} && $self->{prMax} >= $self->{prMin} ? $self->{prMax} : '';
-  $self->set_thresholds( warning => $threshold, critical => $threshold);
+  $self->set_thresholds(
+      metric => $self->{prNames},
+      warning => $threshold,
+      critical => $threshold);
   if ($self->{prErrorFlag} eq 'error') {
     $self->add_message(Monitoring::GLPlugin::CRITICAL);
   } else {
-    $self->add_message($self->check_thresholds($self->{prCount}));
+    $self->add_message($self->check_thresholds(
+        metric => $self->{prNames},
+        value => $self->{prCount}));
   }
   $self->add_perfdata(
       label => $self->{prNames},
