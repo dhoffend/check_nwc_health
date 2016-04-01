@@ -217,6 +217,7 @@ EXTRA_MODULES=\
   Classes/HOSTRESOURCESMIB/Component/EnvironmentalSubsystem.pm \
   Classes/HOSTRESOURCESMIB/Component/CpuSubsystem.pm \
   Classes/HOSTRESOURCESMIB/Component/MemSubsystem.pm \
+  Classes/HOSTRESOURCESMIB/Component/UptimeSubsystem.pm \
   Classes/HOSTRESOURCESMIB.pm \
   Classes/LMSENSORSMIB/Component/EnvironmentalSubsystem.pm \
   Classes/LMSENSORSMIB/Component/FanSubsystem.pm \
